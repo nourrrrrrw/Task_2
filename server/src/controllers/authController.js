@@ -16,10 +16,10 @@ export async function register(req, res, next) {
 
     const existing = await User.findOne({ email: value.email });
     if (existing) return res.status(409).json({ message: 'Email already used' });
-
+    //create user and hash password
     const passwordHash = await bcrypt.hash(value.password, 10);
     const user = await User.create({ name: value.name, email: value.email, passwordHash });
-    const token = signToken(user);
+    const token = signToken(user);//create token
     res.status(201).json({ token, user: publicUser(user) });
   } catch (err) { next(err); }
 }
@@ -31,8 +31,17 @@ const loginSchema = Joi.object({
 
 // TODO: implement login function
 export async function login(req, res, next) {
- 
-}
+ try{
+  const { value, error } = loginSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.message });
+  const userr = await User.findOne({ email: value.email });
+    if (!userr) return res.status(404).json({ message: 'Login unsuccessful' });
+    const isMatch = await bcrypt.compare(value.password, userr.passwordHash);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+    const token = signToken(userr);//create token
+    res.status(201).json({ token, userr: publicUser(userr) });
+  } catch (err) { next(err); }
+ }
 
 export async function me(req, res) {
   const user = await User.findById(req.user.id).lean();
